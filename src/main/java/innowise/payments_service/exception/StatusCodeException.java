@@ -1,9 +1,12 @@
 package innowise.payments_service.exception;
 
-import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
-@RequiredArgsConstructor
+@AllArgsConstructor
+@Getter
 public class StatusCodeException extends RuntimeException {
-    protected final int statusCode;
+    protected final HttpStatus statusCode;
     protected final String message;
 }

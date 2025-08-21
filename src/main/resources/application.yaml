@@ -11,3 +11,12 @@ spring:
 
   liquibase:
     url: mongodb://localhost:27017/${MONGO_DB}?authSource=admin
+
+logging:
+  level:
+    org:
+      springframework:
+        data:
+          mongodb:
+            core:
+              MongoTemplate: DEBUG
