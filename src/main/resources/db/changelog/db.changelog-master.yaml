@@ -1,3 +1,5 @@
 databaseChangeLog:
   - include:
-      file: /db/changelog/changesets/001-create-payments-collection.yaml
+      file: db/changelog/changesets/001-create-payments-collection.xml
+  - include:
+      file: db/changelog/changesets/002-create-payments-indexes.xml

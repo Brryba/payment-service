@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:mongodb="http://www.liquibase.org/xml/ns/mongodb"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+         http://www.liquibase.org/xml/ns/mongodb
+         http://www.liquibase.org/xml/ns/mongodb/liquibase-mongodb-latest.xsd">
+
+    <changeSet id="2" author="Yury Brazgunou">
+        <mongodb:createIndex collectionName="payments">
+            <mongodb:keys>
+                { order_id: 1}
+            </mongodb:keys>
+            <mongodb:options>
+                {unique: false, name: "order_id_index"}
+            </mongodb:options>
+        </mongodb:createIndex>
+        <mongodb:createIndex collectionName="payments">
+            <mongodb:keys>
+                { order_id: 1}
+            </mongodb:keys>
+            <mongodb:options>
+                {unique: false, name: "order_id_index"}
+            </mongodb:options>
+        </mongodb:createIndex>
+        <mongodb:createIndex collectionName="payments">
+            <mongodb:keys>
+                { user_id: 1}
+            </mongodb:keys>
+            <mongodb:options>
+                {unique: false, name: "user_id_index"}
+            </mongodb:options>
+        </mongodb:createIndex>
+        <mongodb:createIndex collectionName="payments">
+            <mongodb:keys>
+                { status: 1}
+            </mongodb:keys>
+            <mongodb:options>
+                {unique: false, name: "status_index"}
+            </mongodb:options>
+        </mongodb:createIndex>
+    </changeSet>
+</databaseChangeLog>

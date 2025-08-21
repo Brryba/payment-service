@@ -1,7 +1,0 @@
-databaseChangeLog:
-  - changeSet:
-      id: 1
-      author: Yury Brazgunou
-      changes:
-        - createCollection:
-            collectionName: payments
