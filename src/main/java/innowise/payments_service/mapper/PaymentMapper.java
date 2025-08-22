@@ -1,36 +1,33 @@
 package innowise.payments_service.mapper;
 
+import innowise.payments_service.dto.PaymentRequestDto;
 import innowise.payments_service.dto.PaymentResponseDto;
 import innowise.payments_service.entity.Payment;
-import org.bson.BsonTimestamp;
 import org.bson.types.Decimal128;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Named;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 import static org.mapstruct.ReportingPolicy.ERROR;
 
 @Mapper(componentModel = SPRING, unmappedTargetPolicy = ERROR)
 public interface PaymentMapper {
-    @Mapping(target = "timestamp", source = "timestamp", qualifiedByName = "convertTimestamp")
-    @Mapping(target = "paymentAmount", source = "paymentAmount", qualifiedByName = "convertPaymentAmount")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "timestamp", ignore = true)
+    @Mapping(target = "paymentAmount", source = "paymentAmount")
+    Payment toPaymentFromRequest(PaymentRequestDto paymentRequestDto);
+
+    @Mapping(target = "paymentAmount", source = "paymentAmount")
     PaymentResponseDto toPaymentResponseDto(Payment payment);
 
-    @Named("convertTimestamp")
-    static LocalDateTime convertTimestamp(BsonTimestamp bsonTimestamp) {
-        Instant instant = Instant.ofEpochSecond(bsonTimestamp.getTime());
-
-        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+    static BigDecimal convertPaymentAmountToBigDecimal(Decimal128 decimal128) {
+        return decimal128.bigDecimalValue();
     }
 
-    @Named("convertPaymentAmount")
-    static BigDecimal convertPaymentAmount(Decimal128 decimal128) {
-        return decimal128.bigDecimalValue();
+    static Decimal128 convertPaymentAmountToDecimal128(BigDecimal decimal128) {
+        return Decimal128.parse(decimal128.toPlainString());
     }
 }

@@ -1,18 +1,19 @@
 package innowise.payments_service.service;
 
+import innowise.payments_service.dto.PaymentRequestDto;
 import innowise.payments_service.dto.PaymentResponseDto;
 import innowise.payments_service.entity.Payment;
 import innowise.payments_service.entity.Status;
 import innowise.payments_service.exception.order.OrderNotFoundException;
 import innowise.payments_service.mapper.PaymentMapper;
 import innowise.payments_service.repository.PaymentRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.bson.BsonTimestamp;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -23,8 +24,25 @@ public class PaymentService {
     private final PaymentMapper paymentMapper;
     private final RandomNumberAPIClient randomNumberAPIClient;
 
-    public PaymentResponseDto createPayment(Payment payment) {
+    public PaymentResponseDto createPayment(@Valid PaymentRequestDto paymentRequest) {
+        log.info("Payment response for order {} received", paymentRequest.getOrderId());
+        Payment payment = paymentMapper.toPaymentFromRequest(paymentRequest);
 
+        log.info("Receiving random number from external API...");
+        try {
+            Integer response = randomNumberAPIClient.getRandomNumberAsInteger();
+            log.info("Received random number from external API: {}", response);
+            payment.setStatus(response % 2 == 0 ? Status.COMPLETED : Status.FAILED);
+        } catch (Exception e) {
+            log.error("Error getting random number from external API. Payment failed", e);
+            payment.setStatus(Status.FAILED);
+        }
+
+        payment.setTimestamp(LocalDateTime.now());
+        payment = paymentRepository.save(payment);
+        log.info("Payment for order {} was saved with id {}", paymentRequest.getOrderId(), payment.getId());
+
+        return paymentMapper.toPaymentResponseDto(payment);
     }
 
     public List<PaymentResponseDto> getPaymentsByOrderId(Long orderId) {
@@ -72,11 +90,8 @@ public class PaymentService {
         return payments.stream().map(paymentMapper::toPaymentResponseDto).toList();
     }
 
-    public BigDecimal countPaymentsSumForDatePeriod(Instant startDate, Instant endDate) {
-        BsonTimestamp startTimestamp = new BsonTimestamp(startDate.getEpochSecond());
-        BsonTimestamp endTimestamp = new BsonTimestamp(endDate.getEpochSecond());
-
-        log.info("Searching for sum of all payment with between the dates...");
-        return paymentRepository.countTotalPaymentAmountInDatePeriod(startTimestamp, endTimestamp).bigDecimalValue();
+    public BigDecimal countPaymentsSumForDatePeriod(LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Receiving the sum of all payments from {} to {}", startDate.toString(), endDate.toString());
+        return paymentRepository.countTotalPaymentAmountInDatePeriod(startDate, endDate).bigDecimalValue();
     }
 }

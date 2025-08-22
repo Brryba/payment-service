@@ -2,11 +2,12 @@ package innowise.payments_service.entity;
 
 import lombok.Builder;
 import lombok.Data;
-import org.bson.BsonTimestamp;
 import org.bson.types.Decimal128;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
+
+import java.time.LocalDateTime;
 
 @Document(collection = "payments")
 @Data
@@ -28,5 +29,5 @@ public class Payment {
     private Status status;
 
     @Field(name = "timestamp")
-    private BsonTimestamp timestamp;
+    private LocalDateTime timestamp;
 }
