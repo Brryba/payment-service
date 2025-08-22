@@ -8,11 +8,11 @@ import innowise.payments_service.mapper.PaymentMapper;
 import innowise.payments_service.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.bson.BsonTimestamp;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -21,7 +21,6 @@ import java.util.List;
 public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
-    private final MongoTemplate mongoTemplate;
 
     public List<PaymentResponseDto> getPaymentsByOrderId(Long orderId) {
         log.info("Searching for all payment with order id {}", orderId);
@@ -68,7 +67,11 @@ public class PaymentService {
         return payments.stream().map(paymentMapper::toPaymentResponseDto).toList();
     }
 
-    public BigDecimal countPaymentsSumForDatePeriod(LocalDateTime startDate, LocalDateTime endDate) {
-        return null;
+    public BigDecimal countPaymentsSumForDatePeriod(Instant startDate, Instant endDate) {
+        BsonTimestamp startTimestamp = new BsonTimestamp(startDate.getEpochSecond());
+        BsonTimestamp endTimestamp = new BsonTimestamp(endDate.getEpochSecond());
+
+        log.info("Searching for sum of all payment with between the dates...");
+        return paymentRepository.countTotalPaymentAmountInDatePeriod(startTimestamp, endTimestamp).bigDecimalValue();
     }
 }

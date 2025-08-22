@@ -2,6 +2,9 @@ package innowise.payments_service.repository;
 
 import innowise.payments_service.entity.Payment;
 import innowise.payments_service.entity.Status;
+import org.bson.BsonTimestamp;
+import org.bson.types.Decimal128;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,4 +17,10 @@ public interface PaymentRepository extends MongoRepository<Payment, String> {
     List<Payment> findAllByUserId(Long userId);
 
     List<Payment> findAllByStatus(Status status);
+
+    @Aggregation(pipeline = {
+            "{ $match: { 'timestamp' : { $gte: ?0, $lte: ?1 } } }",
+            "{ $group: { _id: null, sum: { $sum: '$payment_amount' } } }"
+    })
+    Decimal128 countTotalPaymentAmountInDatePeriod(BsonTimestamp startDate, BsonTimestamp endDate);
 }
