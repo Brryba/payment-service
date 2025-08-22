@@ -21,6 +21,11 @@ import java.util.List;
 public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
+    private final RandomNumberAPIClient randomNumberAPIClient;
+
+    public PaymentResponseDto createPayment(Payment payment) {
+
+    }
 
     public List<PaymentResponseDto> getPaymentsByOrderId(Long orderId) {
         log.info("Searching for all payment with order id {}", orderId);

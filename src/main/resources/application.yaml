@@ -12,11 +12,7 @@ spring:
   liquibase:
     url: mongodb://localhost:27017/${MONGO_DB}?authSource=admin
 
-logging:
-  level:
-    org:
-      springframework:
-        data:
-          mongodb:
-            core:
-              MongoTemplate: DEBUG
+external-api:
+  random-number:
+    host: https://www.random.org
+    url: /integers?num=1&format=plain&min=0&max=100000&col=1&base=10
