@@ -4,7 +4,7 @@ spring:
 
   data:
     mongodb:
-      host: localhost
+      host: ${MONGO_HOST:localhost}
       port: 27017
       authentication-database: admin
 
@@ -13,10 +13,13 @@ spring:
       password: ${MONGO_PASSWORD}
 
   liquibase:
-    url: mongodb://localhost:27017/${MONGO_DB}?authSource=admin
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    url: ${MONGO_DB_URI:mongodb://localhost:27017/${MONGO_DB}?authSource=admin}
+    driver-class-name: liquibase.ext.mongodb.database.MongoClientDriver
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP}
     consumer:
       group-id: payment-service-group
       auto-offset-reset: earliest

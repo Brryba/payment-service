@@ -3,7 +3,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn -B dependency:go-offline
 
-COPY src .
+COPY . .
 RUN mvn clean package -DskipTests
 
 FROM openjdk:21-jdk
