@@ -5,12 +5,15 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class PaymentRequestDto {
+    private String eventType;
     @NotBlank(message = "Order Id is required")
     private Long orderId;
     @NotBlank(message = "User Id is required")
