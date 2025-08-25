@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class PaymentResponseDto {
+    private String eventType;
     private String id;
     private Status status;
     private LocalDateTime timestamp;

@@ -21,6 +21,7 @@ public interface PaymentMapper {
     Payment toPaymentFromRequest(PaymentRequestDto paymentRequestDto);
 
     @Mapping(target = "paymentAmount", source = "paymentAmount")
+    @Mapping(target = "eventType", constant = "CREATE_PAYMENT")
     PaymentResponseDto toPaymentResponseDto(Payment payment);
 
     static BigDecimal convertPaymentAmountToBigDecimal(Decimal128 decimal128) {

@@ -7,6 +7,7 @@ import innowise.payments_service.entity.Status;
 import innowise.payments_service.exception.order.OrderNotFoundException;
 import innowise.payments_service.mapper.PaymentMapper;
 import innowise.payments_service.repository.PaymentRepository;
+import innowise.payments_service.service.kafka.KafkaProducerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
     private final RandomNumberAPIClient randomNumberAPIClient;
+    private final KafkaProducerService kafkaProducerService;
 
     public PaymentResponseDto createPayment(@Valid PaymentRequestDto paymentRequest) {
         log.info("Payment response for order {} received", paymentRequest.getOrderId());
@@ -42,7 +44,10 @@ public class PaymentService {
         payment = paymentRepository.save(payment);
         log.info("Payment for order {} was saved with id {}", paymentRequest.getOrderId(), payment.getId());
 
-        return paymentMapper.toPaymentResponseDto(payment);
+        PaymentResponseDto paymentResponseDto = paymentMapper.toPaymentResponseDto(payment);
+        kafkaProducerService.sendCreatePaymentEvent(paymentResponseDto);
+
+        return paymentResponseDto;
     }
 
     public List<PaymentResponseDto> getPaymentsByOrderId(Long orderId) {
