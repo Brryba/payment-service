@@ -1,0 +1,23 @@
+external-api:
+  random-number:
+    host: http://localhost:8081
+    url: /random-integer
+
+spring:
+  data:
+    mongodb:
+      host: ${MONGO_HOST:localhost}
+      port: 27017
+      authentication-database: admin
+
+      database: payments
+      username: user
+      password: password
+
+  cloud:
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
