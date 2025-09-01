@@ -16,11 +16,31 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_LOG_RETENTION_HOURS: 168
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    networks:
+      - backend
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   discovery-server:
     image: 'discovery-server:latest'
     container_name:
       'discovery-server-container'
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: "curl --fail --silent localhost:8761/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   api-gateway:
     image: 'api-gateway:latest'
@@ -29,10 +49,19 @@ services:
     environment:
       - JWT_KEY=${JWT_KEY}
       - EUREKA_URI=http://discovery-server:8761/eureka
+    networks:
+      - backend
     ports:
       - "80:80"
     depends_on:
       - discovery-server
+    restart: unless-stopped
+    healthcheck:
+      test: "curl --fail --silent localhost:80/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   order-service:
     image: 'order-service:latest'
@@ -47,6 +76,15 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - EUREKA_URI=http://discovery-server:8761/eureka
       - KAFKA_BOOTSTRAP=kafka:9092
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: "curl --fail --silent localhost:80/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   order-db:
     image: postgres
@@ -55,6 +93,17 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_ORDER_SCHEMA}
+    networks:
+      - backend
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-d", "${DB_ORDER_SCHEMA}" ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   auth-service:
     image: 'auth-service:latest'
@@ -69,6 +118,15 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - JWT_KEY=${JWT_KEY}
       - EUREKA_URI=http://discovery-server:8761/eureka
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: "curl --fail --silent localhost:80/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   auth-db:
     image: postgres
@@ -77,6 +135,17 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_AUTH_SCHEMA}
+    networks:
+      - backend
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-d", "${DB_AUTH_SCHEMA}" ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   user-service:
     image: 'user-service:latest'
@@ -89,10 +158,18 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://user-db:5432/${DB_USER_SCHEMA}
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-
       - SPRING_DATA_REDIS_PORT=6379
       - SPRING_DATA_REDIS_HOST=user-redis-cache
       - EUREKA_URI=http://discovery-server:8761/eureka
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: "curl --fail --silent localhost:8080/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   user-db:
     image: postgres
@@ -101,11 +178,32 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_USER_SCHEMA}
+    networks:
+      - backend
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-d", "${DB_USER_SCHEMA}" ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   user-redis-cache:
     image: 'redis:alpine'
     container_name: 'redis-cache'
-    restart: always
+    networks:
+      - backend
+    volumes:
+      - user-redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   payment-service:
     image: 'payment-service:latest'
@@ -122,6 +220,15 @@ services:
       - MONGO_HOST=payment-db
       - MONGO_DB_URI=${MONGO_DB_URI}
       - KAFKA_BOOTSTRAP=kafka:9092
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: "curl --fail --silent localhost:80/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   payment-db:
     image: mongo
@@ -130,3 +237,26 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
       - MONGO_INITDB_DATABASE=${MONGO_DB}
+    networks:
+      - backend
+    volumes:
+      - payment-db-data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  user-db-data:
+  user-redis-data:
+  auth-db-data:
+  order-db-data:
+  payment-db-data:
+  kafka-data:
+
+networks:
+  backend:
+    driver: bridge
