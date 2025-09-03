@@ -47,6 +47,7 @@ services:
     container_name:
       'api-gateway-container'
     environment:
+      - SPRING_PROFILES_ACTIVE=eureka
       - JWT_KEY=${JWT_KEY}
       - EUREKA_URI=http://discovery-server:8761/eureka
     networks:
@@ -71,6 +72,7 @@ services:
       - discovery-server
       - kafka
     environment:
+      - SPRING_PROFILES_ACTIVE=eureka
       - SPRING_DATASOURCE_URL=jdbc:postgresql://order-db:5432/${DB_ORDER_SCHEMA}
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
@@ -113,6 +115,7 @@ services:
       - auth-db
       - discovery-server
     environment:
+      - SPRING_PROFILES_ACTIVE=eureka
       - SPRING_DATASOURCE_URL=jdbc:postgresql://auth-db:5432/${DB_AUTH_SCHEMA}
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
@@ -155,6 +158,7 @@ services:
       - user-redis-cache
       - discovery-server
     environment:
+      - SPRING_PROFILES_ACTIVE=eureka
       - SPRING_DATASOURCE_URL=jdbc:postgresql://user-db:5432/${DB_USER_SCHEMA}
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
@@ -165,7 +169,7 @@ services:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: "curl --fail --silent localhost:8080/actuator/health | grep UP || exit 1"
+      test: "curl --fail --silent localhost:80/actuator/health | grep UP || exit 1"
       interval: 20s
       timeout: 5s
       retries: 5
@@ -213,6 +217,7 @@ services:
       - kafka
       - payment-db
     environment:
+      - SPRING_PROFILES_ACTIVE=eureka
       - EUREKA_URI=http://discovery-server:8761/eureka
       - MONGO_USER=${MONGO_USER}
       - MONGO_PASSWORD=${MONGO_PASSWORD}

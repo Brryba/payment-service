@@ -31,15 +31,19 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
+  cloud:
+    discovery:
+      enabled: false
+    loadbalancer:
+      enabled: false
+
 server:
   port: 80
 
 eureka:
   client:
-    serviceUrl:
-      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
-  instance:
-    prefer-ip-address: true
+    webclient:
+      enabled: false
 
 external-api:
   random-number:
