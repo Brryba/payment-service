@@ -1,16 +1,22 @@
 package innowise.payments_service.service;
 
+import innowise.payments_service.dto.PaymentPageResponseDto;
 import innowise.payments_service.dto.PaymentRequestDto;
 import innowise.payments_service.dto.PaymentResponseDto;
 import innowise.payments_service.entity.Payment;
 import innowise.payments_service.entity.Status;
 import innowise.payments_service.exception.order.OrderNotFoundException;
+import innowise.payments_service.exception.user.PaymentAccessDeniedException;
 import innowise.payments_service.mapper.PaymentMapper;
 import innowise.payments_service.repository.PaymentRepository;
 import innowise.payments_service.service.kafka.KafkaProducerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -50,7 +56,7 @@ public class PaymentService {
         return paymentResponseDto;
     }
 
-    public List<PaymentResponseDto> getPaymentsByOrderId(Long orderId) {
+    public List<PaymentResponseDto> getPaymentsByOrderId(Long userId, Long orderId) {
         log.info("Searching for all payment with order id {}", orderId);
 
         List<Payment> payments = paymentRepository.findAllByOrderId(orderId);
@@ -59,25 +65,36 @@ public class PaymentService {
             log.warn("No Payments found for orderId: {}", orderId);
             throw new OrderNotFoundException("There are no payments associated with this order");
         }
-
         log.info("Found {} payments associated with orderId: {}", payments.size(), orderId);
 
+        payments.forEach(payment -> validatePaymentOwnership(payment, userId));
         return payments.stream().map(paymentMapper::toPaymentResponseDto).toList();
     }
 
-    public List<PaymentResponseDto> getPaymentsByUserId(Long userId) {
+    public PaymentPageResponseDto getPaymentsByUserId(Long userId, int page, int pageSize) {
         log.info("Searching for all payment with user id {}", userId);
 
-        List<Payment> payments = paymentRepository.findAllByUserId(userId);
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("timestamp").descending());
+        Page<Payment> paymentPage = paymentRepository.findAllByUserId(userId, pageable);
 
-        if (payments == null || payments.isEmpty()) {
+        if (paymentPage.getContent().isEmpty()) {
             log.warn("No Payments found for user with id: {}", userId);
-            throw new OrderNotFoundException("There are no payments associated with this user");
+            if (paymentPage.getTotalElements() == 0) {
+                throw new OrderNotFoundException("You haven't done any payments yet");
+            } else {
+                throw new OrderNotFoundException("Page " + page + " does not exist. " +
+                        "The last page for " + pageSize + " size is " + (paymentPage.getTotalPages() - 1));
+            }
         }
 
-        log.info("Found {} payments associated with userId: {}", payments.size(), userId);
+        log.info("Found {} payments associated with userId: {}", paymentPage.getContent().size(), userId);
 
-        return payments.stream().map(paymentMapper::toPaymentResponseDto).toList();
+        return PaymentPageResponseDto.builder()
+                .payments(paymentPage.stream().map(paymentMapper::toPaymentResponseDto).toList())
+                .currentPage(paymentPage.getNumber())
+                .pageSize(paymentPage.getSize())
+                .lastPage(paymentPage.getTotalPages() - 1)
+                .build();
     }
 
     public List<PaymentResponseDto> getPaymentsByStatus(Status status) {
@@ -98,5 +115,12 @@ public class PaymentService {
     public BigDecimal countPaymentsSumForDatePeriod(LocalDateTime startDate, LocalDateTime endDate) {
         log.info("Receiving the sum of all payments from {} to {}", startDate.toString(), endDate.toString());
         return paymentRepository.countTotalPaymentAmountInDatePeriod(startDate, endDate).bigDecimalValue();
+    }
+
+    private void validatePaymentOwnership(Payment payment, Long userId) {
+        if (!payment.getUserId().equals(userId)) {
+            log.warn("Access to payment {} was forbidden for user {}", payment.getId(), userId);
+            throw new PaymentAccessDeniedException("You are not allowed to see other users payments");
+        }
     }
 }

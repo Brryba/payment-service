@@ -50,6 +50,7 @@ services:
       - SPRING_PROFILES_ACTIVE=eureka
       - JWT_KEY=${JWT_KEY}
       - EUREKA_URI=http://discovery-server:8761/eureka
+      - FRONT_END_URL:http://localhost:3000
     networks:
       - backend
     ports:
