@@ -184,7 +184,7 @@ class PaymentServiceUnitTests {
     void testGetPaymentsStatus_NoPaymentsFound() {
         when(paymentRepository.findAllByStatus(Status.FAILED)).thenReturn(List.of());
 
-        assertThrows(OrderNotFoundException.class, () -> paymentService.getPaymentsByStatus(Status.FAILED));
+        assertThrows(PaymentNotFoundException.class, () -> paymentService.getPaymentsByStatus(Status.FAILED));
     }
 
     @Test
