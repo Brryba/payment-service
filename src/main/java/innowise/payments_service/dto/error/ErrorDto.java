@@ -1,4 +1,4 @@
-package innowise.payments_service.dto;
+package innowise.payments_service.dto.error;
 
 import lombok.Getter;
 import lombok.Setter;

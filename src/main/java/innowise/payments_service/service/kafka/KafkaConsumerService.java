@@ -1,6 +1,6 @@
 package innowise.payments_service.service.kafka;
 
-import innowise.payments_service.dto.PaymentRequestDto;
+import innowise.payments_service.dto.payment.PaymentRequestDto;
 import innowise.payments_service.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

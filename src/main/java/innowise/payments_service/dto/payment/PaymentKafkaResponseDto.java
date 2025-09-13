@@ -1,13 +1,15 @@
-package innowise.payments_service.dto;
+package innowise.payments_service.dto.payment;
 
 import innowise.payments_service.entity.Status;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-public class PaymentResponseDto {
+@EqualsAndHashCode(exclude = "timestamp")
+public class PaymentKafkaResponseDto {
     private String eventType;
     private String id;
     private Status status;

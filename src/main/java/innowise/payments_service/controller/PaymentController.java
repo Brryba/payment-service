@@ -1,7 +1,7 @@
 package innowise.payments_service.controller;
 
-import innowise.payments_service.dto.PaymentPageResponseDto;
-import innowise.payments_service.dto.PaymentResponseDto;
+import innowise.payments_service.dto.payment.PaymentPageResponseDto;
+import innowise.payments_service.dto.payment.PaymentResponseDto;
 import innowise.payments_service.service.PaymentService;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -28,9 +28,9 @@ public class PaymentController {
         return paymentService.getPaymentsByUserId(userId, page, size);
     }
 
-    @GetMapping()
-    public List<PaymentResponseDto> getAllOrderPayments(@RequestParam("X-User-Id") Long userId,
-            @RequestParam() @NotNull Long orderId) {
+    @GetMapping(params = "orderId")
+    public List<PaymentResponseDto> getAllOrderPayments(@RequestHeader("X-User-Id") Long userId,
+                                                        @RequestParam() @NotNull Long orderId) {
         return paymentService.getPaymentsByOrderId(userId, orderId);
     }
 }

@@ -1,4 +1,4 @@
-package innowise.payments_service.dto;
+package innowise.payments_service.dto.payment;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;

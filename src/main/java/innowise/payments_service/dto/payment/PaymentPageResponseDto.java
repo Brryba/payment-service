@@ -1,4 +1,4 @@
-package innowise.payments_service.dto;
+package innowise.payments_service.dto.payment;
 
 import lombok.Builder;
 import lombok.Data;

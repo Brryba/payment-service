@@ -4,10 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import innowise.payments_service.dto.PaymentRequestDto;
-import innowise.payments_service.dto.PaymentResponseDto;
+import innowise.payments_service.dto.payment.PaymentKafkaResponseDto;
+import innowise.payments_service.dto.payment.PaymentPageResponseDto;
+import innowise.payments_service.dto.payment.PaymentRequestDto;
+import innowise.payments_service.dto.payment.PaymentResponseDto;
 import innowise.payments_service.entity.Payment;
 import innowise.payments_service.entity.Status;
+import innowise.payments_service.exception.payment.PaymentAccessDeniedException;
+import innowise.payments_service.exception.payment.PaymentNotFoundException;
 import innowise.payments_service.repository.PaymentRepository;
 import innowise.payments_service.service.PaymentService;
 import innowise.payments_service.service.kafka.KafkaConsumerService;
@@ -44,8 +48,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -80,7 +84,7 @@ class PaymentServiceIntegrationTest {
     private KafkaConsumerService kafkaConsumerService;
 
     @MockitoBean
-    private KafkaTemplate<String, PaymentResponseDto> kafkaTemplate;
+    private KafkaTemplate<String, PaymentKafkaResponseDto> kafkaTemplate;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -94,6 +98,8 @@ class PaymentServiceIntegrationTest {
     private PaymentRequestDto paymentRequestDto;
     private final int SUCCESS_API_RESPONSE = 2;
     private final int FAIL_API_RESPONSE = 3;
+    private final long USER_ID = 1L;
+    private final long ORDER_ID = 999L;
 
     @DynamicPropertySource
     static void mongodbContainerProperties(DynamicPropertyRegistry registry) {
@@ -147,7 +153,7 @@ class PaymentServiceIntegrationTest {
     @Test
     void checkPaymentPresentInDatabaseAfterSave() {
         configureWireMockResponse(SUCCESS_API_RESPONSE);
-        PaymentResponseDto response = paymentService.createPayment(paymentRequestDto);
+        PaymentKafkaResponseDto response = paymentService.createPayment(paymentRequestDto);
 
         Payment savedPayment = paymentRepository.findById(response.getId()).orElse(null);
 
@@ -161,7 +167,7 @@ class PaymentServiceIntegrationTest {
     @Test
     void testPaymentsSavesAsFailed_ifExternalAPIFails() {
         stubFor(WireMock.get(externalApiUrl).willReturn(serverError()));
-        PaymentResponseDto response = paymentService.createPayment(paymentRequestDto);
+        PaymentKafkaResponseDto response = paymentService.createPayment(paymentRequestDto);
 
         Payment savedPayment = paymentRepository.findById(response.getId()).orElse(null);
 
@@ -175,54 +181,115 @@ class PaymentServiceIntegrationTest {
     @Test
     void checkFindPaymentsByStatus() {
         configureWireMockResponse(SUCCESS_API_RESPONSE);
-        PaymentResponseDto completedPayment = paymentService.createPayment(paymentRequestDto);
+        PaymentKafkaResponseDto completedPayment = paymentService.createPayment(paymentRequestDto);
         configureWireMockResponse(FAIL_API_RESPONSE);
-        PaymentResponseDto failedPayment = paymentService.createPayment(paymentRequestDto);
+        paymentService.createPayment(paymentRequestDto);
 
         List<PaymentResponseDto> completedPayments = paymentService.getPaymentsByStatus(Status.COMPLETED);
         assertAll(() -> {
             assertNotNull(completedPayments);
             assertEquals(1, completedPayments.size());
             assertEquals(completedPayment.getId(), completedPayments.getFirst().getId());
-            assertNotEquals(failedPayment.getId(), completedPayments.getFirst().getId());
         });
     }
 
     @Test
     void checkFindPaymentsByOrderId() {
+        final long ANOTHER_ORDER_ID = 99999L;
+
         configureWireMockResponse(SUCCESS_API_RESPONSE);
         paymentService.createPayment(paymentRequestDto);
-        paymentRequestDto.setOrderId(999L);
+        paymentRequestDto.setOrderId(ANOTHER_ORDER_ID);
         paymentService.createPayment(paymentRequestDto);
 
-        List<PaymentResponseDto> completedPayments = paymentService.getPaymentsByOrderId(999L);
+        List<PaymentResponseDto> completedPayments = paymentService.getPaymentsByOrderId(USER_ID, ORDER_ID);
         assertAll(() -> {
             assertNotNull(completedPayments);
             assertEquals(1, completedPayments.size());
-            assertEquals(999L, completedPayments.getFirst().getOrderId());
+            assertEquals(ORDER_ID, completedPayments.getFirst().getOrderId());
         });
     }
 
     @Test
-    void checkFindPaymentsByUserId() {
+    void testPaginationForFullPage() {
+        configureWireMockResponse(SUCCESS_API_RESPONSE);
+        for (int i = 0; i < 3; i++) {
+            paymentService.createPayment(paymentRequestDto);
+        }
+
+        PaymentPageResponseDto paymentPageDto = paymentService.getPaymentsByUserId(USER_ID, 0, 2);
+        assertNotNull(paymentPageDto.getPayments());
+        assertAll(() -> {
+            assertEquals(2, paymentPageDto.getPayments().size());
+            assertEquals(0, paymentPageDto.getCurrentPage());
+            assertEquals(2, paymentPageDto.getPageSize());
+            assertEquals(1, paymentPageDto.getLastPage());
+        });
+    }
+
+    @Test
+    void testPaginationForLastPage() {
+        configureWireMockResponse(SUCCESS_API_RESPONSE);
+        for (int i = 0; i < 3; i++) {
+            paymentService.createPayment(paymentRequestDto);
+        }
+
+        PaymentPageResponseDto paymentPageDto = paymentService.getPaymentsByUserId(USER_ID, 1, 2);
+        assertNotNull(paymentPageDto.getPayments());
+        assertAll(() -> {
+            assertEquals(1, paymentPageDto.getPayments().size());
+            assertEquals(1, paymentPageDto.getCurrentPage());
+        });
+    }
+
+    @Test
+    void testPaginationForNotExistingPage_throwsException() {
+        configureWireMockResponse(SUCCESS_API_RESPONSE);
+        for (int i = 0; i < 3; i++) {
+            paymentService.createPayment(paymentRequestDto);
+        }
+
+        assertThrows(PaymentNotFoundException.class, () -> paymentService.getPaymentsByUserId(USER_ID, 2, 2));
+    }
+
+    @Test
+    void testUserHaveNoPayments_throwsException() {
+        assertThrows(PaymentNotFoundException.class, () -> paymentService.getPaymentsByUserId(USER_ID, 2, 2));
+    }
+
+    @Test
+    void testPaymentOrderValidation_userCanOnlyAccessHisPayments() {
         configureWireMockResponse(SUCCESS_API_RESPONSE);
         paymentService.createPayment(paymentRequestDto);
-        paymentRequestDto.setUserId(999L);
+        final long WRONG_USER_ID = -1L;
+
+        assertThrows(PaymentAccessDeniedException.class, () -> paymentService.getPaymentsByOrderId(WRONG_USER_ID, ORDER_ID));
+    }
+
+    @Test
+    void checkFindPaymentsByUserId() {
+        final long ANOTHER_USER_ID = 999L;
+
+        configureWireMockResponse(SUCCESS_API_RESPONSE);
+        paymentService.createPayment(paymentRequestDto);
+        paymentRequestDto.setUserId(ANOTHER_USER_ID);
         paymentService.createPayment(paymentRequestDto);
 
-        List<PaymentResponseDto> completedPayments = paymentService.getPaymentsByUserId(999L);
+        final int PAGE = 0;
+        final int PAGE_SIZE = 10;
+        List<PaymentResponseDto> completedPayments = paymentService.getPaymentsByUserId(USER_ID, PAGE, PAGE_SIZE).getPayments();
         assertAll(() -> {
             assertNotNull(completedPayments);
             assertEquals(1, completedPayments.size());
-            assertEquals(999L, completedPayments.getFirst().getUserId());
+            assertEquals(USER_ID, completedPayments.getFirst().getUserId());
         });
     }
 
     @Test
     void checkCountPaymentsSumForDatePeriod() {
         configureWireMockResponse(SUCCESS_API_RESPONSE);
-        PaymentResponseDto responseDto1 = paymentService.createPayment(paymentRequestDto);
-        PaymentResponseDto responseDto2 = paymentService.createPayment(paymentRequestDto);
+        PaymentKafkaResponseDto responseDto1 = paymentService.createPayment(paymentRequestDto);
+        PaymentKafkaResponseDto responseDto2 = paymentService.createPayment(paymentRequestDto);
         Payment payment1 = paymentRepository.findById(responseDto1.getId()).orElse(null);
 
         assertNotNull(payment1);
@@ -258,6 +325,6 @@ class PaymentServiceIntegrationTest {
         configureWireMockResponse(SUCCESS_API_RESPONSE);
         paymentService.createPayment(paymentRequestDto);
 
-        verify(kafkaTemplate, times(1)).send(eq("payments"), any(PaymentResponseDto.class));
+        verify(kafkaTemplate, times(1)).send(eq("payments"), any(PaymentKafkaResponseDto.class));
     }
 }

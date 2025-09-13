@@ -1,6 +1,6 @@
 package innowise.payments_service.controller;
 
-import innowise.payments_service.dto.ErrorDto;
+import innowise.payments_service.dto.error.ErrorDto;
 import innowise.payments_service.exception.StatusCodeException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;

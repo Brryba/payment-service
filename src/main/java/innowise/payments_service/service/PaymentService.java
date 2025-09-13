@@ -1,12 +1,14 @@
 package innowise.payments_service.service;
 
-import innowise.payments_service.dto.PaymentPageResponseDto;
-import innowise.payments_service.dto.PaymentRequestDto;
-import innowise.payments_service.dto.PaymentResponseDto;
+import innowise.payments_service.dto.payment.PaymentKafkaResponseDto;
+import innowise.payments_service.dto.payment.PaymentPageResponseDto;
+import innowise.payments_service.dto.payment.PaymentRequestDto;
+import innowise.payments_service.dto.payment.PaymentResponseDto;
 import innowise.payments_service.entity.Payment;
 import innowise.payments_service.entity.Status;
 import innowise.payments_service.exception.order.OrderNotFoundException;
-import innowise.payments_service.exception.user.PaymentAccessDeniedException;
+import innowise.payments_service.exception.payment.PaymentNotFoundException;
+import innowise.payments_service.exception.payment.PaymentAccessDeniedException;
 import innowise.payments_service.mapper.PaymentMapper;
 import innowise.payments_service.repository.PaymentRepository;
 import innowise.payments_service.service.kafka.KafkaProducerService;
@@ -32,7 +34,7 @@ public class PaymentService {
     private final RandomNumberAPIClient randomNumberAPIClient;
     private final KafkaProducerService kafkaProducerService;
 
-    public PaymentResponseDto createPayment(@Valid PaymentRequestDto paymentRequest) {
+    public PaymentKafkaResponseDto createPayment(@Valid PaymentRequestDto paymentRequest) {
         log.info("Payment response for order {} received", paymentRequest.getOrderId());
         Payment payment = paymentMapper.toPaymentFromRequest(paymentRequest);
 
@@ -50,7 +52,7 @@ public class PaymentService {
         payment = paymentRepository.save(payment);
         log.info("Payment for order {} was saved with id {}", paymentRequest.getOrderId(), payment.getId());
 
-        PaymentResponseDto paymentResponseDto = paymentMapper.toPaymentResponseDto(payment);
+        PaymentKafkaResponseDto paymentResponseDto = paymentMapper.toPaymentKafkaResponseDto(payment);
         kafkaProducerService.sendCreatePaymentEvent(paymentResponseDto);
 
         return paymentResponseDto;
@@ -61,7 +63,7 @@ public class PaymentService {
 
         List<Payment> payments = paymentRepository.findAllByOrderId(orderId);
 
-        if (payments == null || payments.isEmpty()) {
+        if (payments.isEmpty()) {
             log.warn("No Payments found for orderId: {}", orderId);
             throw new OrderNotFoundException("There are no payments associated with this order");
         }
@@ -80,9 +82,9 @@ public class PaymentService {
         if (paymentPage.getContent().isEmpty()) {
             log.warn("No Payments found for user with id: {}", userId);
             if (paymentPage.getTotalElements() == 0) {
-                throw new OrderNotFoundException("You haven't done any payments yet");
+                throw new PaymentNotFoundException("You haven't done any payments yet");
             } else {
-                throw new OrderNotFoundException("Page " + page + " does not exist. " +
+                throw new PaymentNotFoundException("Page " + page + " does not exist. " +
                         "The last page for " + pageSize + " size is " + (paymentPage.getTotalPages() - 1));
             }
         }
@@ -102,9 +104,9 @@ public class PaymentService {
 
         List<Payment> payments = paymentRepository.findAllByStatus(status);
 
-        if (payments == null || payments.isEmpty()) {
+        if (payments.isEmpty()) {
             log.warn("No Payments found for status: {}", status);
-            throw new OrderNotFoundException("There are no payments with the status");
+            throw new PaymentNotFoundException("There are no payments with the status");
         }
 
         log.info("Found {} payments associated with status: {}", payments.size(), status);

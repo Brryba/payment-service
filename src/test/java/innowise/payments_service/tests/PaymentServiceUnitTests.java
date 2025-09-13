@@ -2,11 +2,13 @@ package innowise.payments_service.tests;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
-import innowise.payments_service.dto.PaymentRequestDto;
-import innowise.payments_service.dto.PaymentResponseDto;
+import innowise.payments_service.dto.payment.PaymentKafkaResponseDto;
+import innowise.payments_service.dto.payment.PaymentRequestDto;
+import innowise.payments_service.dto.payment.PaymentResponseDto;
 import innowise.payments_service.entity.Payment;
 import innowise.payments_service.entity.Status;
 import innowise.payments_service.exception.order.OrderNotFoundException;
+import innowise.payments_service.exception.payment.PaymentNotFoundException;
 import innowise.payments_service.mapper.PaymentMapper;
 import innowise.payments_service.repository.PaymentRepository;
 import innowise.payments_service.service.PaymentService;
@@ -23,6 +25,9 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -35,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,6 +67,11 @@ class PaymentServiceUnitTests {
     private PaymentRequestDto paymentRequestDto;
     private PaymentResponseDto paymentResponseDto;
     private Payment payment;
+
+    private final int PAGE = 0;
+    private final int PAGE_SIZE = 10;
+    private final long USER_ID = 1L;
+    private final long ORDER_ID = 999L;
 
     @BeforeAll
     static void setUp() {
@@ -91,7 +102,7 @@ class PaymentServiceUnitTests {
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        PaymentResponseDto responseDto = paymentService.createPayment(paymentRequestDto);
+        PaymentKafkaResponseDto responseDto = paymentService.createPayment(paymentRequestDto);
 
         assertAll(() -> {
             assertNotNull(responseDto);
@@ -99,7 +110,7 @@ class PaymentServiceUnitTests {
             assertEquals(Status.COMPLETED, responseDto.getStatus());
         });
 
-        verify(kafkaProducerService).sendCreatePaymentEvent(any(PaymentResponseDto.class));
+        verify(kafkaProducerService).sendCreatePaymentEvent(any(PaymentKafkaResponseDto.class));
     }
 
     @Test
@@ -108,7 +119,7 @@ class PaymentServiceUnitTests {
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        PaymentResponseDto responseDto = paymentService.createPayment(paymentRequestDto);
+        PaymentKafkaResponseDto responseDto = paymentService.createPayment(paymentRequestDto);
 
         assertAll(() -> {
             assertNotNull(responseDto);
@@ -116,7 +127,7 @@ class PaymentServiceUnitTests {
             assertEquals(Status.FAILED, responseDto.getStatus());
         });
 
-        verify(kafkaProducerService).sendCreatePaymentEvent(any(PaymentResponseDto.class));
+        verify(kafkaProducerService).sendCreatePaymentEvent(any(PaymentKafkaResponseDto.class));
     }
 
     @Test
@@ -125,7 +136,7 @@ class PaymentServiceUnitTests {
         when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        PaymentResponseDto responseDto = paymentService.createPayment(paymentRequestDto);
+        PaymentKafkaResponseDto responseDto = paymentService.createPayment(paymentRequestDto);
 
         assertAll(() -> {
             assertNotNull(responseDto);
@@ -133,28 +144,27 @@ class PaymentServiceUnitTests {
             assertEquals(Status.FAILED, responseDto.getStatus());
         });
 
-        verify(kafkaProducerService).sendCreatePaymentEvent(any(PaymentResponseDto.class));
+        verify(kafkaProducerService).sendCreatePaymentEvent(any(PaymentKafkaResponseDto.class));
     }
 
     @Test
     void testGetPaymentsByOrderId() {
-        when(paymentRepository.findAllByOrderId(1L)).thenReturn(List.of(payment));
+        when(paymentRepository.findAllByOrderId(ORDER_ID)).thenReturn(List.of(payment));
 
-        List<PaymentResponseDto> responseDtos = paymentService.getPaymentsByOrderId(1L);
+        List<PaymentResponseDto> responseDtos = paymentService.getPaymentsByOrderId(USER_ID, ORDER_ID);
 
         assertAll(() -> {
             assertNotNull(responseDtos);
             assertEquals(1, responseDtos.size());
-            assertEquals(payment.getId(), responseDtos.getFirst().getId());
-            assertEquals(1L, responseDtos.getFirst().getOrderId());
+            assertEquals(paymentResponseDto, responseDtos.getFirst());
         });
     }
 
     @Test
     void testGetPaymentsByOrderId_NoPaymentsFound() {
-        when(paymentRepository.findAllByOrderId(1L)).thenReturn(List.of());
+        when(paymentRepository.findAllByOrderId(ORDER_ID)).thenReturn(List.of());
 
-        assertThrows(OrderNotFoundException.class, () -> paymentService.getPaymentsByOrderId(1L));
+        assertThrows(OrderNotFoundException.class, () -> paymentService.getPaymentsByOrderId(USER_ID, ORDER_ID));
     }
 
     @Test
@@ -166,9 +176,7 @@ class PaymentServiceUnitTests {
         assertAll(() -> {
             assertNotNull(responseDtos);
             assertEquals(1, responseDtos.size());
-            assertEquals(payment.getId(), responseDtos.getFirst().getId());
-            assertEquals(1L, responseDtos.getFirst().getOrderId());
-            assertEquals(Status.COMPLETED, responseDtos.getFirst().getStatus());
+            assertEquals(paymentResponseDto, responseDtos.getFirst());
         });
     }
 
@@ -181,23 +189,22 @@ class PaymentServiceUnitTests {
 
     @Test
     void testGetPaymentsByUserId() {
-        when(paymentRepository.findAllByUserId(1L)).thenReturn(List.of(payment));
+        when(paymentRepository.findAllByUserId(eq(USER_ID), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(payment)));
 
-        List<PaymentResponseDto> responseDtos = paymentService.getPaymentsByUserId(1L);
+        List<PaymentResponseDto> responseDtos = paymentService.getPaymentsByUserId(USER_ID, PAGE, PAGE_SIZE).getPayments();
 
         assertAll(() -> {
             assertNotNull(responseDtos);
             assertEquals(1, responseDtos.size());
-            assertEquals(payment.getId(), responseDtos.getFirst().getId());
-            assertEquals(1L, responseDtos.getFirst().getUserId());
+            assertEquals(paymentResponseDto, responseDtos.getFirst());
         });
     }
 
     @Test
     void testGetPaymentsByUserId_NoOrdersFound() {
-        when(paymentRepository.findAllByUserId(1L)).thenReturn(List.of());
+        when(paymentRepository.findAllByUserId(eq(USER_ID), any(Pageable.class))).thenReturn(Page.empty());
 
-        assertThrows(OrderNotFoundException.class, () -> paymentService.getPaymentsByUserId(1L));
+        assertThrows(PaymentNotFoundException.class, () -> paymentService.getPaymentsByUserId(USER_ID, PAGE, PAGE_SIZE));
     }
 
     @Test

@@ -1,7 +1,8 @@
 package innowise.payments_service.mapper;
 
-import innowise.payments_service.dto.PaymentRequestDto;
-import innowise.payments_service.dto.PaymentResponseDto;
+import innowise.payments_service.dto.payment.PaymentRequestDto;
+import innowise.payments_service.dto.payment.PaymentKafkaResponseDto;
+import innowise.payments_service.dto.payment.PaymentResponseDto;
 import innowise.payments_service.entity.Payment;
 import org.bson.types.Decimal128;
 import org.mapstruct.Mapper;
@@ -22,6 +23,8 @@ public interface PaymentMapper {
 
     @Mapping(target = "paymentAmount", source = "paymentAmount")
     @Mapping(target = "eventType", constant = "CREATE_PAYMENT")
+    PaymentKafkaResponseDto toPaymentKafkaResponseDto(Payment payment);
+
     PaymentResponseDto toPaymentResponseDto(Payment payment);
 
     static BigDecimal convertPaymentAmountToBigDecimal(Decimal128 decimal128) {

@@ -1,4 +1,4 @@
-package innowise.payments_service.exception.user;
+package innowise.payments_service.exception.payment;
 
 import innowise.payments_service.exception.StatusCodeException;
 import org.springframework.http.HttpStatus;
