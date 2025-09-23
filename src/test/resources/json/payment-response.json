@@ -1,0 +1,8 @@
+{
+  "orderId": 999,
+  "userId": 1,
+  "paymentAmount": 25,
+  "timestamp": "2025-01-01T00:00:00.123",
+  "id": "68a85c403b8cc87b4dd10bfc",
+  "status": "COMPLETED"
+}

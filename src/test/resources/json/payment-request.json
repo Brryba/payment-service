@@ -1,0 +1,6 @@
+{
+  "eventType": "ORDER_CREATED",
+  "orderId": 999,
+  "userId": 1,
+  "paymentAmount": 25
+}
