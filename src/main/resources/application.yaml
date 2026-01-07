@@ -37,6 +37,25 @@ spring:
     loadbalancer:
       enabled: false
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: jurabrezgunov@gmail.com
+    properties:
+      mail:
+        debug: true
+        smtp:
+          auth:
+            mechanisms: XOAUTH2
+          starttls:
+            enable: true
+            required: true
+    gmail:
+      client-id: ${GCP_CLIENT_ID}
+      client-secret: ${GCP_CLIENT_SECRET}
+      refresh-token: ${GMAIL_REFRESH_TOKEN}
+      url: https://oauth2.googleapis.com
+
 server:
   port: 80
 

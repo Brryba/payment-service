@@ -51,12 +51,11 @@ services:
       - JWT_KEY=${JWT_KEY}
       - EUREKA_URI=http://discovery-server:8761/eureka
       - FRONT_END_URL:http://localhost:3000
+      - CAMUNDA_GATEWAY:http://camunda-bpm:8080
     networks:
       - backend
     ports:
       - "80:80"
-    depends_on:
-      - discovery-server
     restart: unless-stopped
     healthcheck:
       test: "curl --fail --silent localhost:80/actuator/health | grep UP || exit 1"
