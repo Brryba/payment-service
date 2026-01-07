@@ -1,17 +1,18 @@
 package innowise.payments_service.service;
 
-import innowise.payments_service.client.GoogleAuthClient;
-import innowise.payments_service.dto.google_oauth2.GoogleAccessTokenResponse;
-import lombok.RequiredArgsConstructor;
+import com.google.auth.oauth2.UserCredentials;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.time.Instant;
 
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class GmailTokenProvider {
-    private final GoogleAuthClient googleAuthClient;
+    private static final int SAFETY_MARGIN_SECONDS = 15;
 
     @Value("${spring.mail.gmail.refresh-token}")
     private String refreshToken;
@@ -22,28 +23,44 @@ public class GmailTokenProvider {
     @Value("${spring.mail.gmail.client-secret}")
     private String clientSecret;
 
-    private final int SAFETY_MARGIN_SECONDS = 2;
+    private UserCredentials googleCredentials;
 
-    private volatile String accessToken;
-    private volatile Instant expiresAt;
+    @PostConstruct
+    public void initializeGoogleUserCredentials() {
+        googleCredentials = UserCredentials.newBuilder()
+                .setRefreshToken(refreshToken)
+                .setClientId(clientId)
+                .setClientSecret(clientSecret)
+                .build();
 
-    public String getAccessToken() {
-        if (isTokenExpired()) {
+        try {
+            googleCredentials.refresh();
+            log.info("Gmail access token was successfully received");
+        } catch (IOException e) {
+            log.error("Error initializing google credentials: {}", e.getMessage());
+        }
+    }
+
+    public String getAccessToken() throws IOException {
+        if (isTokenExpiresSoon()) {
             synchronized (this) {
-                if (isTokenExpired()) {
-                    GoogleAccessTokenResponse response = googleAuthClient.refreshAccessToken(
-                            clientId, clientSecret, refreshToken, "refresh_token"
-                    );
-                    accessToken = response.getAccessToken();
-                    expiresAt = Instant.now().plusSeconds(response.getExpiresIn());
+                if (isTokenExpiresSoon()) {
+                    log.info("Gmail access token is expired. Requesting new one...");
+                    googleCredentials.refresh();
+                    log.info("Gmail access token was successfully updated");
                 }
             }
         }
 
-        return accessToken;
+        return googleCredentials.getAccessToken().getTokenValue();
     }
 
-    private boolean isTokenExpired() {
-        return accessToken == null || Instant.now().isAfter(expiresAt.minusSeconds(SAFETY_MARGIN_SECONDS));
+    private boolean isTokenExpiresSoon() {
+        if (googleCredentials.getAccessToken() == null) {
+            return true;
+        }
+
+        Instant expirationTime = googleCredentials.getAccessToken().getExpirationTime().toInstant();
+        return Instant.now().isAfter(expirationTime.minusSeconds(SAFETY_MARGIN_SECONDS));
     }
 }
