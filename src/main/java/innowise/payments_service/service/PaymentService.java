@@ -33,6 +33,7 @@ public class PaymentService {
     private final PaymentMapper paymentMapper;
     private final RandomNumberAPIClient randomNumberAPIClient;
     private final KafkaProducerService kafkaProducerService;
+    private final EmailSenderService emailSenderService;
 
     public PaymentKafkaResponseDto createPayment(@Valid PaymentRequestDto paymentRequest) {
         log.info("Payment response for order {} received", paymentRequest.getOrderId());
@@ -52,9 +53,10 @@ public class PaymentService {
         payment = paymentRepository.save(payment);
         log.info("Payment for order {} was saved with id {}", paymentRequest.getOrderId(), payment.getId());
 
+        emailSenderService.sendEmail(paymentRequest.getUserId(), payment);
+
         PaymentKafkaResponseDto paymentResponseDto = paymentMapper.toPaymentKafkaResponseDto(payment);
         kafkaProducerService.sendCreatePaymentEvent(paymentResponseDto);
-
         return paymentResponseDto;
     }
 

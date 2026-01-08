@@ -29,9 +29,13 @@ public class GmailTokenProvider {
 
     public String getAccessToken() throws IOException {
         if (isTokenExpiresSoon()) {
-            log.info("Gmail access token is expired. Requesting new one...");
-            googleCredentials.refresh();
-            log.info("Gmail access token was successfully updated");
+            synchronized (this) {
+                if (isTokenExpiresSoon()) {
+                    log.info("Gmail access token is expired. Requesting new one...");
+                    googleCredentials.refresh();
+                    log.info("Gmail access token was successfully updated");
+                }
+            }
         }
 
         return googleCredentials.getAccessToken().getTokenValue();

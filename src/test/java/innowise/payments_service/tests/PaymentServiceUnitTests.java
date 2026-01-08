@@ -11,6 +11,7 @@ import innowise.payments_service.exception.order.OrderNotFoundException;
 import innowise.payments_service.exception.payment.PaymentNotFoundException;
 import innowise.payments_service.mapper.PaymentMapper;
 import innowise.payments_service.repository.PaymentRepository;
+import innowise.payments_service.service.EmailSenderService;
 import innowise.payments_service.service.PaymentService;
 import innowise.payments_service.service.RandomNumberAPIClient;
 import innowise.payments_service.service.kafka.KafkaProducerService;
@@ -28,6 +29,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mail.javamail.JavaMailSender;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -58,6 +60,9 @@ class PaymentServiceUnitTests {
 
     @Mock
     private KafkaProducerService kafkaProducerService;
+
+    @Mock
+    private EmailSenderService emailSenderService;
 
     @InjectMocks
     private PaymentService paymentService;
