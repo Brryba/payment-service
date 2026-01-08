@@ -2,37 +2,23 @@ package innowise.payments_service.service;
 
 import com.google.auth.oauth2.UserCredentials;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.Instant;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class GmailTokenProvider {
     private static final int SAFETY_MARGIN_SECONDS = 15;
 
-    @Value("${spring.mail.gmail.refresh-token}")
-    private String refreshToken;
-
-    @Value("${spring.mail.gmail.client-id}")
-    private String clientId;
-
-    @Value("${spring.mail.gmail.client-secret}")
-    private String clientSecret;
-
-    private UserCredentials googleCredentials;
+    private final UserCredentials googleCredentials;
 
     @PostConstruct
     public void initializeGoogleUserCredentials() {
-        googleCredentials = UserCredentials.newBuilder()
-                .setRefreshToken(refreshToken)
-                .setClientId(clientId)
-                .setClientSecret(clientSecret)
-                .build();
-
         try {
             googleCredentials.refresh();
             log.info("Gmail access token was successfully received");
@@ -43,13 +29,9 @@ public class GmailTokenProvider {
 
     public String getAccessToken() throws IOException {
         if (isTokenExpiresSoon()) {
-            synchronized (this) {
-                if (isTokenExpiresSoon()) {
-                    log.info("Gmail access token is expired. Requesting new one...");
-                    googleCredentials.refresh();
-                    log.info("Gmail access token was successfully updated");
-                }
-            }
+            log.info("Gmail access token is expired. Requesting new one...");
+            googleCredentials.refresh();
+            log.info("Gmail access token was successfully updated");
         }
 
         return googleCredentials.getAccessToken().getTokenValue();

@@ -54,7 +54,6 @@ spring:
       client-id: ${GCP_CLIENT_ID}
       client-secret: ${GCP_CLIENT_SECRET}
       refresh-token: ${GMAIL_REFRESH_TOKEN}
-      url: https://oauth2.googleapis.com
 
 server:
   port: 80
