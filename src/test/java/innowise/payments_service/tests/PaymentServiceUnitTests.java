@@ -116,6 +116,7 @@ class PaymentServiceUnitTests {
         });
 
         verify(kafkaProducerService).sendCreatePaymentEvent(any(PaymentKafkaResponseDto.class));
+        verify(emailSenderService).sendEmail(eq(1L), any(Payment.class));
     }
 
     @Test
@@ -133,6 +134,7 @@ class PaymentServiceUnitTests {
         });
 
         verify(kafkaProducerService).sendCreatePaymentEvent(any(PaymentKafkaResponseDto.class));
+        verify(emailSenderService).sendEmail(eq(1L), any(Payment.class));
     }
 
     @Test
@@ -150,6 +152,7 @@ class PaymentServiceUnitTests {
         });
 
         verify(kafkaProducerService).sendCreatePaymentEvent(any(PaymentKafkaResponseDto.class));
+        verify(emailSenderService).sendEmail(eq(1L), any(Payment.class));
     }
 
     @Test

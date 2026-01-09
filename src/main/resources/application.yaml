@@ -63,6 +63,10 @@ eureka:
     webclient:
       enabled: false
 
+services:
+  user-service:
+    url: ${USER_SERVICE_URL:}
+
 external-api:
   random-number:
     host: https://www.random.org
