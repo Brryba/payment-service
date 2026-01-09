@@ -40,7 +40,6 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: jurabrezgunov@gmail.com
     properties:
       mail:
         debug: true
