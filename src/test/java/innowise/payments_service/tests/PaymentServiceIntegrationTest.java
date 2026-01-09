@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import innowise.payments_service.config.GoogleCredentialsConfig;
 import innowise.payments_service.dto.payment.PaymentKafkaResponseDto;
 import innowise.payments_service.dto.payment.PaymentPageResponseDto;
 import innowise.payments_service.dto.payment.PaymentRequestDto;
@@ -13,6 +14,8 @@ import innowise.payments_service.entity.Status;
 import innowise.payments_service.exception.payment.PaymentAccessDeniedException;
 import innowise.payments_service.exception.payment.PaymentNotFoundException;
 import innowise.payments_service.repository.PaymentRepository;
+import innowise.payments_service.service.EmailSenderService;
+import innowise.payments_service.service.GmailTokenProvider;
 import innowise.payments_service.service.PaymentService;
 import innowise.payments_service.service.kafka.KafkaConsumerService;
 import org.junit.jupiter.api.AfterAll;
@@ -85,6 +88,15 @@ class PaymentServiceIntegrationTest {
 
     @MockitoBean
     private KafkaTemplate<String, PaymentKafkaResponseDto> kafkaTemplate;
+
+    @MockitoBean
+    EmailSenderService emailSenderService;
+
+    @MockitoBean
+    GoogleCredentialsConfig googleCredentialsConfig;
+
+    @MockitoBean
+    GmailTokenProvider gmailTokenProvider;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -321,10 +333,12 @@ class PaymentServiceIntegrationTest {
     }
 
     @Test
-    void testKafkaProducerSendsEvent() {
+    void testCreatedPaymentWritesToKafkaAndSendsEmail() {
         configureWireMockResponse(SUCCESS_API_RESPONSE);
         paymentService.createPayment(paymentRequestDto);
 
         verify(kafkaTemplate, times(1)).send(eq("payments"), any(PaymentKafkaResponseDto.class));
+
+        verify(emailSenderService, times(1)).sendEmail(eq(1L), any(Payment.class));
     }
 }

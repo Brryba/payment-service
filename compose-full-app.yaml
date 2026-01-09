@@ -51,12 +51,11 @@ services:
       - JWT_KEY=${JWT_KEY}
       - EUREKA_URI=http://discovery-server:8761/eureka
       - FRONT_END_URL:http://localhost:3000
+      - CAMUNDA_GATEWAY:http://camunda-bpm:8080
     networks:
       - backend
     ports:
       - "80:80"
-    depends_on:
-      - discovery-server
     restart: unless-stopped
     healthcheck:
       test: "curl --fail --silent localhost:80/actuator/health | grep UP || exit 1"
@@ -120,7 +119,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://auth-db:5432/${DB_AUTH_SCHEMA}
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-      - JWT_KEY=${JWT_KEY}
+      - ACCESS_TOKEN_JWT_SECRET=${JWT_KEY}
       - EUREKA_URI=http://discovery-server:8761/eureka
     networks:
       - backend
@@ -225,6 +224,9 @@ services:
       - MONGO_DB=${MONGO_DB}
       - MONGO_HOST=payment-db
       - MONGO_DB_URI=${MONGO_DB_URI}
+      - GCP_CLIENT_ID=${GCP_CLIENT_ID}
+      - GCP_CLIENT_SECRET=${GCP_CLIENT_SECRET}
+      - GMAIL_REFRESH_TOKEN=${GMAIL_REFRESH_TOKEN}
       - KAFKA_BOOTSTRAP=kafka:9092
     networks:
       - backend
